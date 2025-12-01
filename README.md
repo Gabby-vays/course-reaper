@@ -1,3 +1,8 @@
+
+<img width="666" alt="Gemini_Generated_Image_812twr812twr812t" src="https://github.com/user-attachments/assets/6790f4be-6de8-4599-94a2-830aa6be6a73" />
+
+
+
 # CourseReaper 🎓
 **Automated University Course Registration Monitor**
 
