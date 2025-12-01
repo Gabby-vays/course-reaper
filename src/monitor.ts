@@ -20,7 +20,7 @@ async function main() {
     const isVisible = process.argv.includes('--visible');
     const headless = !isVisible;
 
-    console.log(`Starting ClassWatch in ${isVisible ? 'Visible' : 'Background'} Mode (Interval: ${CONFIG.checkIntervalMinutes} mins)...`);
+    console.log(`Starting CourseReaper in ${isVisible ? 'Visible' : 'Background'} Mode (Interval: ${CONFIG.checkIntervalMinutes} mins)...`);
 
     while (true) {
         const browser = await chromium.launch({ headless: headless });

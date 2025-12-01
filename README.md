@@ -1,7 +1,7 @@
-# ClassWatch 🎓
+# CourseReaper 🎓
 **Automated University Course Registration Monitor**
 
-ClassWatch is an intelligent automation tool designed to monitor university course availability in real-time. Built with **TypeScript** and **Playwright**, it autonomously navigates the student portal, checks the status of courses in your shopping cart, and sends instant notifications when a seat opens up.
+CourseReaper is a high-performance automation tool designed to monitor university course availability in real-time. Built with **TypeScript** and **Playwright**, it continuously checks the status of courses in your shopping cart and sends instant notifications when a seat opens up, streamlining the registration process.
 
 > **Note for Recruiters:** This project demonstrates proficiency in **Browser Automation**, **TypeScript**, **Asynchronous Programming**, and **System Design** for reliability (handling 2FA, session persistence, and dynamic DOM elements).
 

@@ -1,5 +1,5 @@
 {
-  "name": "class_reg",
+  "name": "course-reaper",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Secure your schedule. Automated real-time course monitoring.",
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@types/node": "^24.10.1",
