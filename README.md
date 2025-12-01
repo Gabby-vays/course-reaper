@@ -1,117 +1,67 @@
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/6790f4be-6de8-4599-94a2-830aa6be6a73" alt="CourseReaper Logo" width="120" />
 
-<img width="666" alt="Gemini_Generated_Image_812twr812twr812t" src="https://github.com/user-attachments/assets/6790f4be-6de8-4599-94a2-830aa6be6a73" />
+  # CourseReaper 🎓
 
+  **Secure your schedule. Automated real-time course monitoring.**
 
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Playwright](https://img.shields.io/badge/Playwright-45ba4b?style=for-the-badge&logo=Playwright&logoColor=white)](https://playwright.dev/)
+  [![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-# CourseReaper 🎓
-**Automated University Course Registration Monitor**
-
-CourseReaper is a high-performance automation tool designed to monitor university course availability in real-time. Built with **TypeScript** and **Playwright**, it continuously checks the status of courses in your shopping cart and sends instant notifications when a seat opens up, streamlining the registration process.
-
-> **Note for Recruiters:** This project demonstrates proficiency in **Browser Automation**, **TypeScript**, **Asynchronous Programming**, and **System Design** for reliability (handling 2FA, session persistence, and dynamic DOM elements).
-
----
-
-## 🚀 Features
-
-*   **Shopping Cart Monitoring**: Automatically detects all courses in your shopping cart—no manual configuration needed.
-*   **Smart Status Detection**: Uses advanced DOM scraping to identify "Open", "Closed", or "Waitlist" statuses, even when hidden behind icons or accessibility tags.
-*   **Instant Notifications**: Integrates with **Resend** to send email alerts the moment a class opens.
-*   **Robust Authentication**: Handles FSU's complex login flow, including **Two-Factor Authentication (2FA)** and session persistence to minimize login prompts.
-*   **Background Execution**: Runs silently in the background (headless mode) with configurable check intervals.
+</div>
 
 ---
 
-## 🛠️ Tech Stack
+## 🚀 Overview
+**CourseReaper** is a high-performance automation tool designed to monitor university course availability in real-time. Built with **TypeScript** and **Playwright**, it continuously checks your shopping cart and sends instant notifications when a seat opens up.
 
-*   **Runtime**: Node.js
-*   **Language**: TypeScript
-*   **Automation**: Playwright (E2E Testing Framework)
-*   **Notifications**: Resend API (Email)
-*   **Configuration**: Dotenv & JSON
+> **Tech Stack:** Browser Automation • TypeScript • Asynchronous Systems • 2FA Handling
 
----
+## ✨ Features
+*   **🛒 Smart Monitoring**: Auto-detects courses in your shopping cart.
+*   **🕵️ Deep Scraping**: Parses hidden status tags and icons (Open/Closed/Waitlist).
+*   **⚡ Instant Alerts**: Zero-latency email notifications via Resend.
+*   **🔐 Robust Auth**: Handles 2FA and persists sessions to minimize login prompts.
+*   **👻 Background Mode**: Runs silently with headless execution.
 
-## 📋 Prerequisites
+## 🛠️ Quick Start
 
-Before you begin, ensure you have the following installed:
-1.  **Node.js** (Version 18 or higher) - [Download Here](https://nodejs.org/)
-2.  **Git** - [Download Here](https://git-scm.com/)
-
----
-
-## ⚙️ Setup Guide (For Non-Engineers)
-
-### 1. Download the Project
-Open your terminal (Command Prompt on Windows, Terminal on Mac) and run:
+### 1. Install
 ```bash
-git clone https://github.com/yourusername/ClassWatch.git
-cd ClassWatch
-```
-
-### 2. Install Dependencies
-Install the necessary software libraries:
-```bash
+git clone https://github.com/Gabby-vays/course-reaper.git
+cd course-reaper
 npm install
 ```
 
-### 3. Create Configuration Files
-You need to set up your credentials and settings.
+### 2. Configure
+Create a `.env` file:
+```env
+PORTAL_USERNAME=your_fsuid
+PORTAL_PASSWORD=your_password
+RESEND_API_KEY=re_12345...
+```
 
-**A. Environment Variables (`.env`)**
-1.  Duplicate the `.env.example` file and rename it to `.env`.
-2.  Open `.env` in a text editor (like Notepad or TextEdit) and fill in your details:
-    ```env
-    PORTAL_USERNAME=your_fsuid
-    PORTAL_PASSWORD=your_password
-    RESEND_API_KEY=re_12345... (Get this from resend.com)
-    ```
+Update `config.json` with your term and email.
 
-**B. App Configuration (`config.json`)**
-1.  Open `config.json`.
-2.  Update the `term` (e.g., "2026 Spring") and your email address:
-    ```json
-    "notification": {
-        "email": {
-            "enabled": true,
-            "from": "onboarding@resend.dev",
-            "to": ["your_email@gmail.com"]
-        }
-    }
-    ```
-
----
-
-## ▶️ How to Run
-
-### Start Monitoring
-**Default (Background Mode):**
-Runs silently in the background. Perfect for long-term monitoring.
+### 3. Run
+**Background Mode (Default):**
 ```bash
 npx tsx src/monitor.ts
 ```
 
-**Visible Mode (For Debugging):**
-Opens the browser window so you can see what it's doing. Useful for the first login (to handle 2FA) or debugging issues.
+**Visible Mode (Debug/First Run):**
 ```bash
 npx tsx src/monitor.ts --visible
 ```
 
-*   **First Run**: It is recommended to run in **Visible Mode** first to approve the 2FA prompt on your phone.
-*   **Subsequent Runs**: Use the default command to run silently.
-
-### Stop Monitoring
-To stop the program, press `Ctrl + C` in your terminal.
-
----
-
-## 🔍 How It Works (Technical Deep Dive)
-
-1.  **Session Management**: The script saves browser storage state (`auth.json`) to reuse cookies, bypassing 2FA on subsequent runs.
-2.  **DOM Traversal**: It targets the specific "Shopping Cart" container using robust selectors (e.g., filtering by CRN pattern `(XXXX)`) to avoid false positives from other tables like "Enrolled Classes".
-3.  **State Tracking**: It maintains a local state file (`last-status.json`) to compare the current status vs. the previous run. Notifications are **only** triggered on a state change (e.g., Closed → Open).
+## 🔍 Architecture
+1.  **Session Persistence**: Saves `auth.json` to bypass repeated 2FA.
+2.  **DOM Strategy**: Targets specific cart containers to avoid false positives.
+3.  **State Diffing**: Compares `last-status.json` vs live data to trigger alerts only on status *changes*.
 
 ---
-
-## 🛡️ Disclaimer
-This tool is for educational purposes and personal use only. Please use responsibly and adhere to your university's acceptable use policy regarding automated scripts.
+<div align="center">
+  <sub>Built for educational purposes. Use responsibly.</sub>
+</div>

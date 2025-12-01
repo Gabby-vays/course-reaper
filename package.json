@@ -7,7 +7,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "Secure your schedule. Automated real-time course monitoring.",
   "devDependencies": {
     "@playwright/test": "^1.57.0",
