@@ -5,10 +5,9 @@
     "notification": {
         "email": {
             "enabled": true,
-            "from": "classwatch@example.com",
+            "from": "onboarding@resend.dev",
             "to": [
-                "gabby@gmail.com",
-                "you@gmail.com"
+                "your_email@example.com"
             ]
         },
         "twilio": {

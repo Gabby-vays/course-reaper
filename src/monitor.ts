@@ -17,42 +17,55 @@ interface CourseStatus {
 }
 
 async function main() {
-    console.log('Starting ClassWatch (Shopping Cart Mode)...');
+    const isVisible = process.argv.includes('--visible');
+    const headless = !isVisible;
 
-    const browser = await chromium.launch({ headless: false }); // Keep false for now to see it work
+    console.log(`Starting ClassWatch in ${isVisible ? 'Visible' : 'Background'} Mode (Interval: ${CONFIG.checkIntervalMinutes} mins)...`);
 
-    // Check for existing session
-    let context;
-    if (fs.existsSync(AUTH_FILE)) {
-        console.log('Found existing session file. Attempting to restore...');
-        context = await browser.newContext({
-            viewport: { width: 1280, height: 720 },
-            storageState: AUTH_FILE
-        });
-    } else {
-        console.log('No session file found. Starting fresh session.');
-        context = await browser.newContext({
-            viewport: { width: 1280, height: 720 }
-        });
-    }
+    while (true) {
+        const browser = await chromium.launch({ headless: headless });
 
-    const page = await context.newPage();
+        // Check for existing session
+        let context;
+        if (fs.existsSync(AUTH_FILE)) {
+            context = await browser.newContext({
+                viewport: { width: 1280, height: 720 },
+                storageState: AUTH_FILE
+            });
+        } else {
+            context = await browser.newContext({
+                viewport: { width: 1280, height: 720 }
+            });
+        }
 
-    try {
-        await loginAndNavigate(page, context);
+        const page = await context.newPage();
 
-        // Check all courses in the cart
-        const currentStatus = await checkShoppingCart(page);
+        try {
+            console.log(`\n[${new Date().toLocaleTimeString()}] Running check...`);
+            await loginAndNavigate(page, context);
 
-        // Compare and notify
-        await processStatus(currentStatus);
+            // Check all courses in the cart
+            const currentStatus = await checkShoppingCart(page);
 
-    } catch (error) {
-        console.error('Error during execution:', error);
-        await page.screenshot({ path: `screenshots/error-${Date.now()}.png` });
-    } finally {
-        console.log('Closing browser...');
-        await browser.close();
+            // Compare and notify
+            await processStatus(currentStatus);
+
+            console.log('Check complete.');
+
+        } catch (error) {
+            console.error('Error during execution:', error);
+            try {
+                await page.screenshot({ path: `screenshots/error-${Date.now()}.png` });
+            } catch (e) {
+                console.error('Could not take error screenshot');
+            }
+        } finally {
+            await browser.close();
+        }
+
+        // Wait for next interval
+        console.log(`Waiting ${CONFIG.checkIntervalMinutes} minutes...`);
+        await new Promise(resolve => setTimeout(resolve, CONFIG.checkIntervalMinutes * 60 * 1000));
     }
 }
 
