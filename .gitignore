@@ -5,3 +5,8 @@ screenshots/*
 playwright-report/*
 .DS_Store
 dist
+
+# Local session and status files
+auth.json
+last-status.json
+debug-page.html

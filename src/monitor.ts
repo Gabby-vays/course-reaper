@@ -7,6 +7,7 @@ import 'dotenv/config';
 const CONFIG_PATH = path.join(process.cwd(), 'config.json');
 const CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
 const STATUS_FILE = path.join(process.cwd(), 'last-status.json');
+const AUTH_FILE = path.join(process.cwd(), 'auth.json');
 
 interface CourseStatus {
     [crn: string]: {
@@ -19,13 +20,26 @@ async function main() {
     console.log('Starting ClassWatch (Shopping Cart Mode)...');
 
     const browser = await chromium.launch({ headless: false }); // Keep false for now to see it work
-    const context = await browser.newContext({
-        viewport: { width: 1280, height: 720 }
-    });
+
+    // Check for existing session
+    let context;
+    if (fs.existsSync(AUTH_FILE)) {
+        console.log('Found existing session file. Attempting to restore...');
+        context = await browser.newContext({
+            viewport: { width: 1280, height: 720 },
+            storageState: AUTH_FILE
+        });
+    } else {
+        console.log('No session file found. Starting fresh session.');
+        context = await browser.newContext({
+            viewport: { width: 1280, height: 720 }
+        });
+    }
+
     const page = await context.newPage();
 
     try {
-        await loginAndNavigate(page);
+        await loginAndNavigate(page, context);
 
         // Check all courses in the cart
         const currentStatus = await checkShoppingCart(page);
@@ -42,7 +56,7 @@ async function main() {
     }
 }
 
-async function loginAndNavigate(page: Page) {
+async function loginAndNavigate(page: Page, context: any) {
     console.log('Logging in...');
     const username = process.env.PORTAL_USERNAME || 'UNDEFINED';
     console.log(`Using FSUID: ${username}`);
@@ -52,6 +66,33 @@ async function loginAndNavigate(page: Page) {
     }
 
     await page.goto(CONFIG.portalUrl);
+
+    // Handle potential intermediate "FSU Central Authentication" link for resumed sessions
+    try {
+        const authLink = page.getByRole('link', { name: 'FSU Central Authentication' });
+        if (await authLink.isVisible({ timeout: 3000 })) {
+            console.log('Clicking "FSU Central Authentication" link...');
+            await authLink.click();
+        }
+    } catch (e) {
+        // Ignore if not found
+    }
+
+    // Check if we are already logged in
+    // If we see "Student Central" link, we are good.
+    try {
+        await page.getByRole('link', { name: 'Student Central' }).waitFor({ timeout: 15000 });
+        console.log('✅ Session restored! Skipping login.');
+
+        // Refresh session file just in case
+        await context.storageState({ path: AUTH_FILE });
+
+        // Proceed to navigation
+        await navigateToCart(page);
+        return;
+    } catch (e) {
+        console.log('Session expired or invalid. Proceeding with full login.');
+    }
 
     await page.getByRole('textbox', { name: 'FSUID' }).click();
     await page.getByRole('textbox', { name: 'FSUID' }).fill(process.env.PORTAL_USERNAME || '');
@@ -73,6 +114,15 @@ async function loginAndNavigate(page: Page) {
         // If it times out, maybe we skipped it or are already logged in.
         console.log('Device confirmation prompt did not appear within 30s. Checking for dashboard...');
     }
+
+    // Save session after successful login
+    console.log('Login successful. Saving session state...');
+    await context.storageState({ path: AUTH_FILE });
+
+    await navigateToCart(page);
+}
+
+async function navigateToCart(page: Page) {
 
     console.log('Navigating to Add Classes...');
     await page.getByRole('link', { name: 'Student Central' }).click();
@@ -96,30 +146,24 @@ async function checkShoppingCart(page: Page): Promise<CourseStatus> {
     const status: CourseStatus = {};
     const mainFrame = page.frameLocator('iframe[title="Main Content"]');
 
-    // Target the specific "Shopping Cart" table
-    // Based on screenshot, it has a header "2026 Spring Shopping Cart"
-    // We'll look for the table that contains this text in its header or caption
+    // Dump HTML for debugging (Absolute path to be safe)
+    const debugPath = path.join(process.cwd(), 'debug-page.html');
+    // const html = await mainFrame.locator('body').innerHTML();
+    // fs.writeFileSync(debugPath, html);
+    // console.log(`Saved page HTML to ${debugPath}`);
 
-    // Find the container for the cart
-    // The screenshot shows a box with title "2026 Spring Shopping Cart"
-    // We'll look for a grid/table inside a container with that text
+    // Strategy based on debug-page.html:
+    // 1. The Shopping Cart is in a div with class "shopping-cart".
+    // 2. The table inside it has class "PSLEVEL1GRID".
+    // 3. The rows have IDs starting with "trSSR_REGFORM_VW".
+    // 4. Status is in a span with class "sr-only" (e.g., "Closed") OR FontAwesome icon.
 
-    // Let's try to find all rows in the table that has "Shopping Cart" in the title
-    // This is safer than just "tr" which picks up the "Add to Cart" box
+    const cartContainer = mainFrame.locator('div.shopping-cart');
 
-    // Find the header first
-    const cartHeader = mainFrame.getByText(/Shopping Cart/i).last(); // "2026 Spring Shopping Cart"
+    // Ensure we are looking at the right table
+    const rows = await cartContainer.locator('tr[id^="trSSR_REGFORM_VW"]').all();
 
-    // Find the table associated with this header. 
-    // Usually in PeopleSoft, the header is above the grid.
-    // We'll look for the nearest table or grid.
-
-    // Let's try a more specific row selector based on the columns we see: "Delete", "Class", "Days/Times"
-    // Any row that has a "Delete" button is likely a course row in the cart.
-
-    const rows = await mainFrame.locator('tr').filter({ has: mainFrame.getByRole('button', { name: 'Delete' }) }).all();
-
-    console.log(`Found ${rows.length} course rows in the cart.`);
+    console.log(`Found ${rows.length} course rows in the Shopping Cart.`);
 
     for (const row of rows) {
         try {
@@ -127,31 +171,34 @@ async function checkShoppingCart(page: Page): Promise<CourseStatus> {
             if (!text) continue;
 
             // Extract CRN from format like "CNT 4406-0001 (1679)"
-            // Regex: look for 4-5 digits inside parentheses
             const crnMatch = text.match(/\((\d{4,5})\)/);
             if (!crnMatch) continue;
 
             const crn = crnMatch[1];
 
             // Extract Status
-            // Look for the status icon image in this row
-            // It usually has alt text "Open", "Closed", or "Wait List"
+            // The debug HTML shows: <span class="sr-only" id="...">Closed</span>
+            // It also shows icons: <span class="fa fa-times-circle-o danger"></span>
+
             let courseStatus = 'Unknown';
 
-            const images = await row.locator('img').all();
-            for (const img of images) {
-                const alt = await img.getAttribute('alt');
-                if (alt) {
-                    if (alt.match(/Open/i)) courseStatus = 'Open';
-                    else if (alt.match(/Closed/i)) courseStatus = 'Closed';
-                    else if (alt.match(/Wait/i)) courseStatus = 'Waitlist';
-                }
+            // Try to find the hidden text first (most reliable)
+            const statusSpan = row.locator('.sr-only').filter({ hasText: /Open|Closed|Wait/i }).first();
+            if (await statusSpan.count() > 0) {
+                const statusText = await statusSpan.textContent();
+                if (statusText?.match(/Open/i)) courseStatus = 'Open';
+                else if (statusText?.match(/Closed/i)) courseStatus = 'Closed';
+                else if (statusText?.match(/Wait/i)) courseStatus = 'Waitlist';
             }
 
-            // Extract Name (Class code)
-            // "CNT 4406-0001 (1679)"
-            // We'll grab the text from the "Class" column (usually 2nd column)
-            // Or just grab the text that looks like a course code
+            // Fallback: Check for specific icon classes
+            if (courseStatus === 'Unknown') {
+                if (await row.locator('.fa-check-circle-o').count() > 0) courseStatus = 'Open';
+                else if (await row.locator('.fa-times-circle-o').count() > 0) courseStatus = 'Closed';
+                else if (await row.locator('.fa-square').count() > 0) courseStatus = 'Waitlist'; // Guessing for waitlist
+            }
+
+            // Extract Name
             const nameMatch = text.match(/[A-Z]{3}\s+\d{4}[-\w]*/);
             const name = nameMatch ? nameMatch[0] : 'Unknown Course';
 
@@ -159,7 +206,7 @@ async function checkShoppingCart(page: Page): Promise<CourseStatus> {
                 name: name,
                 status: courseStatus
             };
-            console.log(`Found: ${name} (${crn}) - ${courseStatus}`);
+            console.log(`Found in Cart: ${name} (${crn}) - ${courseStatus}`);
 
         } catch (e) {
             console.error('Error parsing row:', e);
@@ -178,27 +225,22 @@ async function processStatus(current: CourseStatus) {
 
     for (const [crn, data] of Object.entries(current)) {
         const oldData = previous[crn];
-        const oldStatus = oldData ? oldData.status : null; // null means never checked
+        const oldStatus = oldData ? oldData.status : null;
         const newStatus = data.status;
-
-        // Notify if:
-        // 1. Status changed (and is not Unknown)
-        // 2. OR it's the first time we see it AND it's Open (User request)
 
         if (newStatus === 'Unknown') continue;
 
-        if (oldStatus !== newStatus) {
-            const msg = `Update: ${data.name} (${crn}) is now ${newStatus}`;
+        // ONLY notify on transition (change)
+        // We explicitly check if oldStatus exists (not first run) and is different
+        if (oldStatus && oldStatus !== newStatus) {
+            const msg = `Update: ${data.name} (${crn}) changed from ${oldStatus} to ${newStatus}`;
             console.log(msg);
 
             if (newStatus === 'Open') {
                 await sendNotifications(`🎉 ${msg} - GO REGISTER!`);
             }
-        } else if (!oldStatus && newStatus === 'Open') {
-            // First run (or new course added) and it's ALREADY Open
-            const msg = `Found Open Class: ${data.name} (${crn}) is currently Open!`;
-            console.log(msg);
-            await sendNotifications(`🎉 ${msg} - GO REGISTER!`);
+        } else if (!oldStatus) {
+            console.log(`Initial check for ${data.name} (${crn}): ${newStatus}`);
         }
     }
 
