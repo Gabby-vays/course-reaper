@@ -1,0 +1,18 @@
+{
+    "portalUrl": "https://cas.fsu.edu/cas/login?service=https%3A%2F%2Fwww.my.fsu.edu%2Fkurogo_login%2Freturn%2Flogin%2Ffsu_central_authentication_service_cas%3F_kgologin_state%3Dff28f1fe-bfc7-4aa2-a387-44e4bb25db32",
+    "term": "2026 Spring",
+    "checkIntervalMinutes": 10,
+    "notification": {
+        "email": {
+            "enabled": true,
+            "from": "classwatch@example.com",
+            "to": [
+                "gabby@gmail.com",
+                "you@gmail.com"
+            ]
+        },
+        "twilio": {
+            "enabled": true
+        }
+    }
+}
